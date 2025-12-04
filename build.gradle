@@ -44,6 +44,10 @@ dependencies {
     // local publish library adding dependency
     implementation 'org.example:UberProject-EntityService:0.0.7-SNAPSHOT'
 
+    // adding log4j2 for logging
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+
 }
 
 tasks.named('test') {

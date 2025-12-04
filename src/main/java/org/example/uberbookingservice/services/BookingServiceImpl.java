@@ -9,6 +9,8 @@ import org.example.uberbookingservice.repositories.PassengerRepository;
 import org.example.uberprojectentityservice.models.Booking;
 import org.example.uberprojectentityservice.models.BookingStatus;
 import org.example.uberprojectentityservice.models.Passenger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -23,6 +25,9 @@ public class BookingServiceImpl implements BookingService {
     private final PassengerRepository passengerRepository;
     private final BookingRepository bookingRepository;
     private final RestTemplate restTemplate;                              // using this to make api call to locationService, can be done using retrofit as well
+
+    // adding logger interface for logging i,e debug error ,warn, etc
+    private final Logger logger = LoggerFactory.getLogger(BookingServiceImpl.class);
 
     private static final String LOCATION_SERVICE = "http://localhost:7777";
 
