@@ -45,7 +45,15 @@ dependencies {
     implementation 'org.example:UberProject-EntityService:0.0.7-SNAPSHOT'
 
     // adding log4j2 for logging
-    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+//    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+    // adding retrofit for asysynchronous call to location service
+    implementation('com.squareup.retrofit2:retrofit:2.4.0')
+    implementation('com.squareup.retrofit2:converter-gson:2.4.0')
+
+
+    // https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-netflix-eureka-client
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client:5.0.0")
 
 
 }
