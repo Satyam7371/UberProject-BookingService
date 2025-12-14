@@ -1,6 +1,7 @@
 package org.example.uberbookingservice.services;
 
 import org.example.uberbookingservice.apis.LocationServiceApi;
+import org.example.uberbookingservice.apis.UberSocketApi;
 import org.example.uberbookingservice.dtos.*;
 import org.example.uberbookingservice.repositories.BookingRepository;
 import org.example.uberbookingservice.repositories.DriverRepository;
@@ -15,6 +16,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -29,18 +31,20 @@ public class BookingServiceImpl implements BookingService {
     private final DriverRepository driverRepository;
 
     private LocationServiceApi locationServiceApi;
+    private UberSocketApi uberSocketApi;
 
 //    // adding logger interface for logging i,e debug error ,warn, etc       currently not in use
 //    private final Logger logger = LoggerFactory.getLogger(BookingServiceImpl.class);
 
 //    private static final String LOCATION_SERVICE = "http://localhost:7777";
 
-    public BookingServiceImpl(PassengerRepository passengerRepository, BookingRepository bookingRepository, LocationServiceApi locationServiceApi, DriverRepository driverRepository) {
+    public BookingServiceImpl(PassengerRepository passengerRepository, BookingRepository bookingRepository, LocationServiceApi locationServiceApi, DriverRepository driverRepository, UberSocketApi uberSocketApi) {
         this.passengerRepository = passengerRepository;
         this.bookingRepository = bookingRepository;
         this.restTemplate = new RestTemplate();
         this.locationServiceApi = locationServiceApi;
         this.driverRepository = driverRepository;
+        this.uberSocketApi = uberSocketApi;
     }
 
     @Override
@@ -61,7 +65,7 @@ public class BookingServiceImpl implements BookingService {
                 .longitude(bookingDetails.getStartLocation().getLongitude())
                 .build();
 
-        processNearbyDriversAsync(request);
+        processNearbyDriversAsync(request, bookingDetails.getPassengerId(), newBooking.getId());
 //
 //        // make an api call to locationService to fetch nearby driver
 //        ResponseEntity<DriverLocationDto[]> result = restTemplate.postForEntity(LOCATION_SERVICE + "/api/location/nearby/drivers", request, DriverLocationDto[].class);
@@ -84,6 +88,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public UpdateBookingResponseDto updateBooking(UpdateBookingRequestDto bookingRequestDto, Long bookingId) {
 
+        System.out.println(bookingRequestDto.getDriverId().get());
 
         Optional<Driver> driver = driverRepository.findById(bookingRequestDto.getDriverId().get());
         bookingRepository.updateBookingStatusAndDriverById(bookingId, BookingStatus.SCHEDULED, driver.get());
@@ -96,8 +101,8 @@ public class BookingServiceImpl implements BookingService {
     }
 
 
-    // asysn comm for fetching nearby drivers using retrofit
-    private void processNearbyDriversAsync(NearbyDriversRequestDto requestDto) {
+    // asysn comm for fetching nearby drivers to location service using retrofit
+    private void processNearbyDriversAsync(NearbyDriversRequestDto requestDto, Long passengerId, Long bookingId) {
         Call<DriverLocationDto[]> call = locationServiceApi.getNearbyDrivers(requestDto);
 
         // this is for asynchronous call
@@ -115,6 +120,8 @@ public class BookingServiceImpl implements BookingService {
                     driverLocations.forEach(driverLocationDto -> {
                         System.out.println("ID = " + driverLocationDto.getDriverId() + " lat = " + driverLocationDto.getLatitude() + " longi = " + driverLocationDto.getLongitude());
                     });
+                    raiseRideRequestAsync(RideRequestDto.builder().passengerId(passengerId).bookingId(bookingId).build());
+
                 } else {
                     System.out.println("Request Failed" + response.message());
                 }
@@ -123,6 +130,32 @@ public class BookingServiceImpl implements BookingService {
             @Override
             public void onFailure(Call<DriverLocationDto[]> call, Throwable throwable) {
                 throwable.printStackTrace();
+            }
+        });
+    }
+
+    // asynch call to socket server
+    private void raiseRideRequestAsync(RideRequestDto requestDto) {
+        Call<Boolean> call = uberSocketApi.raiseRideRequest(requestDto);
+
+        System.out.println(call.request().url() + " " + call.request().method() + " " + call.request().headers());
+        call.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(Call<Boolean> call, Response<Boolean> response) {
+                System.out.println(response.isSuccessful());
+                System.out.println(response.message());
+                if (response.isSuccessful() && response.body() != null) {
+                    Boolean result = response.body();
+                    System.out.println("Driver response is" + result.toString());
+
+                } else {
+                    System.out.println("Request for ride failed" + response.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Boolean> call, Throwable t) {
+                t.printStackTrace();
             }
         });
     }
