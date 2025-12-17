@@ -65,7 +65,11 @@ public class BookingServiceImpl implements BookingService {
                 .longitude(bookingDetails.getStartLocation().getLongitude())
                 .build();
 
-        processNearbyDriversAsync(request, bookingDetails.getPassengerId(), newBooking.getId());
+        try {
+            processNearbyDriversAsync(request, bookingDetails.getPassengerId(), newBooking.getId());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 //
 //        // make an api call to locationService to fetch nearby driver
 //        ResponseEntity<DriverLocationDto[]> result = restTemplate.postForEntity(LOCATION_SERVICE + "/api/location/nearby/drivers", request, DriverLocationDto[].class);
@@ -102,7 +106,7 @@ public class BookingServiceImpl implements BookingService {
 
 
     // asysn comm for fetching nearby drivers to location service using retrofit
-    private void processNearbyDriversAsync(NearbyDriversRequestDto requestDto, Long passengerId, Long bookingId) {
+    private void processNearbyDriversAsync(NearbyDriversRequestDto requestDto, Long passengerId, Long bookingId) throws IOException{
         Call<DriverLocationDto[]> call = locationServiceApi.getNearbyDrivers(requestDto);
 
         // this is for asynchronous call
@@ -120,7 +124,11 @@ public class BookingServiceImpl implements BookingService {
                     driverLocations.forEach(driverLocationDto -> {
                         System.out.println("ID = " + driverLocationDto.getDriverId() + " lat = " + driverLocationDto.getLatitude() + " longi = " + driverLocationDto.getLongitude());
                     });
-                    raiseRideRequestAsync(RideRequestDto.builder().passengerId(passengerId).bookingId(bookingId).build());
+                    try {
+                        raiseRideRequestAsync(RideRequestDto.builder().passengerId(passengerId).bookingId(bookingId).build());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
 
                 } else {
                     System.out.println("Request Failed" + response.message());
@@ -135,7 +143,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     // asynch call to socket server
-    private void raiseRideRequestAsync(RideRequestDto requestDto) {
+    private void raiseRideRequestAsync(RideRequestDto requestDto) throws IOException{
         Call<Boolean> call = uberSocketApi.raiseRideRequest(requestDto);
 
         System.out.println(call.request().url() + " " + call.request().method() + " " + call.request().headers());
